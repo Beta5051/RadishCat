@@ -5,6 +5,7 @@ import (
 	"github.com/Beta5051/NeisGo"
 	"github.com/bwmarrin/discordgo"
 	"github.com/sirupsen/logrus"
+	"os"
 	"strings"
 )
 
@@ -40,16 +41,38 @@ func New(token string, v ...interface{}) (rc *RadishCat, err error) {
 		}
 	}
 	if len(v) >= 2 {
-		if color, ok := v[1].(int); ok{
+		if color, ok := v[1].(int); ok {
 			rc.EmbedColor = color
+		}
+	}
+
+	err = rc.start()
+	return
+}
+
+var paths = []string{PROFILE_PATH}
+var commands = []*Command{
+	NewCommand("도움말", "도움말", []string{"help"}, &helpCommand{}),
+	NewCommand("급식", "<지역> <학교> <학교종류> <날짜(필수X)> - 급식 정보를 보여줍니다.", []string{"diet"}, &dietCommand{}),
+}
+
+func (rc *RadishCat) start() error {
+	for _, path := range paths {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			err = os.MkdirAll(path, 0755)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	rc.Session.AddHandler(rc.ready)
 	rc.Session.AddHandler(rc.commandMessageCreate)
-	rc.AddCommand(NewCommand("도움말", "도움말", []string{"help"}, &helpCommand{}))
-	rc.AddCommand(NewCommand("급식", "<지역> <학교> <학교종류> <날짜(필수X)> - 급식 정보를 보여줍니다.", []string{"diet"}, &dietCommand{}))
-	return
+
+	for _, command := range commands {
+		rc.AddCommand(command)
+	}
+	return nil
 }
 
 func (rc *RadishCat) Open() error {
